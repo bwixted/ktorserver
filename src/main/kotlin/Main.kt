@@ -1,24 +1,51 @@
-@file:Suppress("DEPRECATION")
+@file:Suppress("DEPRECATION", "UNUSED")
 
-import com.google.gson.Gson
+
 import io.ktor.application.*
 import io.ktor.features.CORS
 import io.ktor.features.DefaultHeaders
+import io.ktor.features.StatusPages
+import io.ktor.html.respondHtml
 import io.ktor.http.*
+
 import io.ktor.response.*
 import io.ktor.routing.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
+import kotlinx.html.*
+
 import java.time.Duration
 
 
 fun main(args: Array<String>) {
 
+    suspend fun getServerInfo(call: ApplicationCall) {
+
+        call.respondHtml {
+            head {
+                title { +"KtorServer Info" }
+            }
+            body {
+                h1 {
+                    +"KtorServer"
+                }
+                p {
+                    +"This server provides OUIs (Organizationally Unique Identifiers) that have been assigned to a manufacturer by IEEE."
+                    +"You can lookup OUIs using the manufacturer name and also discover the manufacturer for a given OUI."
+                    +"See the GitHub site for more information: https://github.com/bwixted/ktorserver"
+                }
+            }
+
+        }
+
+
+    }
+
     suspend fun getMacAddress(call: ApplicationCall) {
         val id = call.parameters["id"]
 
         if (id != null) {
-            var mac = DeviceManager.findMac(id)
+            val mac = DeviceManager.findMac(id)
             if (mac.isEmpty())
                 call.respondText("Not Found", ContentType.Text.Plain)
             else {
@@ -45,7 +72,7 @@ fun main(args: Array<String>) {
     suspend fun getAllManufacturers(call: ApplicationCall) {
         // dump entire list
         val list = DeviceManager.getAllManufacturers()
-        var str = StringBuilder()
+        val str = StringBuilder()
 
         str.append("<html>")
 
@@ -57,18 +84,25 @@ fun main(args: Array<String>) {
         call.respondText(str.toString(), ContentType.Text.Html)
     }
 
-    val server = embeddedServer(Netty, port = 8080) {
+    val server : NettyApplicationEngine = embeddedServer(Netty, port = 8080) {
 
+        install(DefaultHeaders) {
+        }
 
-        install(DefaultHeaders)
         install(CORS) {
             maxAge = Duration.ofDays(1)
+        }
+
+        install(StatusPages) {
+            exception<Throwable> { e ->
+                call.respondText(e.localizedMessage,ContentType.Text.Plain, HttpStatusCode.InternalServerError)
+            }
         }
 
         routing {
 
             get("/") {
-                call.respondText("Welcome to the MAC info server", ContentType.Text.Plain)
+                getServerInfo(call)
             }
 
             // returns a list of mac addresses for the manufacturer given in 'id'
@@ -87,7 +121,6 @@ fun main(args: Array<String>) {
             get("/manuf/") {
                 getAllManufacturers(call)
             }
-
 
         }
     }
