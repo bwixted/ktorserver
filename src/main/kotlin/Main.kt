@@ -19,7 +19,7 @@ import java.time.Duration
 
 fun main(args: Array<String>) {
 
-    suspend fun getServerInfo(call: ApplicationCall) {
+      suspend fun getServerInfo(call: ApplicationCall) {
 
         call.respondHtml {
             head {
